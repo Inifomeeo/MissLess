@@ -1,2 +1,2 @@
 # dbms-mini
-A miniature DBMS
+A miniature key-value store in C.
