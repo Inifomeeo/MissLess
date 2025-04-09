@@ -1,7 +1,8 @@
-#include <string.h>
+#include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <errno.h>
+#include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -15,16 +16,16 @@ const size_t MAX_MSG = 4096;
  */
 static int32_t recv_all(int fd, char *buf, size_t n)
 {
-    size_t total_received = 0;
+    size_t total_read = 0;
     size_t byetes_left = n;
     ssize_t num_read;
 
-    while (total_received < n) {
-        num_read = recv(fd, buf + total_received, byetes_left, 0);
+    while (total_read < n) {
+        num_read = recv(fd, buf + total_read, byetes_left, 0);
         if (num_read <= 0) {
             return -1;
         }
-        total_received += num_read;    
+        total_read += num_read;    
         byetes_left -= num_read;
     }
 
@@ -113,6 +114,7 @@ int main()
     int32_t hr;
     char host[INET6_ADDRSTRLEN];
 
+    // Configure the server address structure
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
@@ -130,21 +132,21 @@ int main()
         // Create a socket
         sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
         if (sockfd == -1) {
-            perror("server: socket");
+            perror("socket");
             continue;
         }
 
         // Eliminate "Address already in use" error
         if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(int)) == -1) {
             perror("setsockopt");
-            return 1;
+            exit(EXIT_FAILURE);
         }
 
-        // Bind the socket file descriptor to the address
+        // Bind the socket to the address
         rv = bind(sockfd, p->ai_addr, p->ai_addrlen);
         if (rv == -1) {
-            close(sockfd);
             perror("bind");
+            close(sockfd);
             continue;
         }
 
@@ -155,18 +157,19 @@ int main()
     freeaddrinfo(listp);
     if (p == NULL) {
         fprintf(stderr, "server: failed to bind\n");
-        return 2;
+        exit(EXIT_FAILURE);
     }
 
-    // Listen for connection requests on the socket file descriptor
+    // Listen for incoming connections
     rv = listen(sockfd, SOMAXCONN);
     if (rv == -1) {
         perror("listen");
-        return 1;
+        close(sockfd);
+        exit(EXIT_FAILURE);
     }
 
     while(1) {
-        // Accept
+        // Accept a client connection
         clientlen = sizeof(client_addr);
         connfd = accept(sockfd, (struct sockaddr *)&client_addr, &clientlen);
         if (connfd == -1) {
