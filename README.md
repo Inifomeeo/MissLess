@@ -1,2 +1,2 @@
-# MissLess
-A key-value store in C.
+# stashd
+A key-value store in C++.
