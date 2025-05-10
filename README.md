@@ -1,2 +1,2 @@
-# dbms-mini
-A miniature key-value store in C.
+# MissLess
+A key-value store in C.
